@@ -49,10 +49,11 @@ defmodule BotArmyCcHttpLlmGateway.Router do
     case BotArmyRuntime.NATS.Publisher.request("llm.claude_code.complete", envelope, timeout_ms) do
       {:ok, response_body} ->
         latency_ms = System.monotonic_time(:millisecond) - start_time
-        RequestLogger.log_response(body, response_body, latency_ms)
+        response_json = encode_response_body(response_body)
+        RequestLogger.log_response(body, response_json, latency_ms)
         conn
         |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, response_body)
+        |> send_resp(200, response_json)
 
       {:error, :timeout} ->
         latency_ms = System.monotonic_time(:millisecond) - start_time
@@ -93,4 +94,7 @@ defmodule BotArmyCcHttpLlmGateway.Router do
       |> put_resp_header("content-type", "application/json")
       |> send_resp(500, error_response)
   end
+
+  defp encode_response_body(response_body) when is_binary(response_body), do: response_body
+  defp encode_response_body(response_body), do: Jason.encode!(response_body)
 end

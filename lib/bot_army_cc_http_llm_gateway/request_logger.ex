@@ -64,7 +64,13 @@ defmodule BotArmyCcHttpLlmGateway.RequestLogger do
   end
 
   defp extract_model_used(response_body) do
-    case Jason.decode(response_body) do
+    response_json =
+      case response_body do
+        body when is_binary(body) -> body
+        body -> Jason.encode!(body)
+      end
+
+    case Jason.decode(response_json) do
       {:ok, response} -> response["model"] || "unknown"
       {:error, _} -> "unknown"
     end

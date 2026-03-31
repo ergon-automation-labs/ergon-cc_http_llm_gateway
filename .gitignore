@@ -27,3 +27,6 @@ cover/
 
 # Logs
 *.log
+
+# generated assets
+*.tar.gz

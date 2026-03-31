@@ -70,6 +70,8 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
+          set -euo pipefail
+
           echo "==============================================="
           echo "Deploying release"
           echo "==============================================="
@@ -87,11 +89,46 @@ pipeline {
           echo "Updating current symlink..."
           ln -sfn "${DEST}" "${RELEASE_DIR}/current"
 
-          echo "Restarting service..."
-          launchctl kickstart -k system/com.botarmy.${BOT_NAME} || launchctl load /Library/LaunchDaemons/com.botarmy.${BOT_NAME}.plist
+          # Runtime env (including PORT) is managed by Salt/pillar.
+          # Jenkins must never override PORT; it only reads and verifies it.
+          CONFIG_FILE="/etc/bot_army/${BOT_NAME}.env"
+          if [ ! -f "${CONFIG_FILE}" ]; then
+            echo "ERROR: Missing ${CONFIG_FILE}. Salt must provision runtime env before Jenkins deploy."
+            exit 1
+          fi
 
-          echo "Waiting for service to stabilize..."
-          sleep 5
+          GATEWAY_PORT=$(awk -F= '/^PORT=/{print $2; exit}' "${CONFIG_FILE}" | tr -d "[:space:]")
+          if [ -z "${GATEWAY_PORT}" ]; then
+            echo "ERROR: PORT is not set in ${CONFIG_FILE}. Configure via pillar/air-secrets and re-apply Salt."
+            exit 1
+          fi
+          echo "Using gateway port from Salt-managed env: ${GATEWAY_PORT}"
+
+          echo "Restarting service..."
+          SERVICE_ID="system/com.botarmy.${BOT_NAME}"
+          PLIST_PATH="/Library/LaunchDaemons/com.botarmy.${BOT_NAME}.plist"
+          if launchctl print "${SERVICE_ID}" >/dev/null 2>&1; then
+            launchctl kickstart -k "${SERVICE_ID}"
+          else
+            launchctl bootstrap system "${PLIST_PATH}"
+          fi
+
+          echo "Waiting for service to bind localhost:${GATEWAY_PORT}..."
+          for i in $(seq 1 20); do
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${GATEWAY_PORT}/v1/messages" || true)
+            if [ "${status_code}" != "000" ]; then
+              echo "✓ Gateway responding on localhost:${GATEWAY_PORT} (HTTP ${status_code})"
+              break
+            fi
+
+            if [ "${i}" -eq 20 ]; then
+              echo "ERROR: Gateway failed to bind localhost:${GATEWAY_PORT}"
+              launchctl print "${SERVICE_ID}" || true
+              exit 1
+            fi
+
+            sleep 1
+          done
 
           echo "Deploy complete!"
           echo "Completion time: $(date)"
