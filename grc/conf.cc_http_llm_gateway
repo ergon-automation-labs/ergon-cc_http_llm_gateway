@@ -1,0 +1,32 @@
+# grc (Generic Colorizer) configuration for CC HTTP LLM Gateway logs
+# Install to ~/.grc/conf.cc_http_llm_gateway via: make setup-hooks
+# Use with: grc --config=cc_http_llm_gateway tail -f /var/log/bot_army/cc_http_llm_gateway/YYYY-MM-DD.log
+
+# Timestamps (dim)
+regexp=\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\]
+colour=dark
+-
+
+# REQUEST lines (cyan)
+regexp=\] REQUEST .*
+colour=cyan
+-
+
+# RESPONSE 2xx (success - green)
+regexp=\] RESPONSE.*status=2\d\d.*
+colour=green
+-
+
+# RESPONSE 4xx (client error - yellow)
+regexp=\] RESPONSE.*status=4\d\d.*
+colour=yellow
+-
+
+# ERROR lines (red)
+regexp=\] ERROR .*
+colour=red
+-
+
+# Key=value highlights (bold)
+regexp=(model|model_used|latency_ms|messages|has_tools|reason|status)=\S+
+colour=bold

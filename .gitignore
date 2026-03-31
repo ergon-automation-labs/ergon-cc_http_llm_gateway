@@ -1,0 +1,29 @@
+# Elixir/Mix
+_build/
+deps/
+*.beam
+*.ez
+.mix/
+erl_crash.dump
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test/Coverage
+cover/
+.coverage
+
+# Local environment
+.env
+.env.local
+
+# Logs
+*.log
