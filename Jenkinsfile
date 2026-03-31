@@ -15,7 +15,7 @@ pipeline {
   environment {
     BOT_NAME = 'cc_http_llm_gateway'
     RELEASE_DIR = "/opt/ergon/releases/${BOT_NAME}"
-    GITHUB_REPO = "ergon-automation-labs/ergon-cc-http-llm-gateway"
+    GITHUB_REPO = "ergon-automation-labs/ergon-cc_http_llm_gateway"
   }
 
   stages {
