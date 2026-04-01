@@ -2,7 +2,7 @@ import Config
 
 # HTTP port configuration
 config :bot_army_cc_http_llm_gateway, :http_port,
-  String.to_integer(System.get_env("PORT", "39090"))
+  String.to_integer(System.get_env("PORT", "9090"))
 
 # Log directory configuration
 config :bot_army_cc_http_llm_gateway, :log_dir,
