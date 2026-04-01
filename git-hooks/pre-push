@@ -1,87 +1,86 @@
 #!/bin/bash
 # Git pre-push hook for bot_army_cc_http_llm_gateway
 # Validates compilation and builds release before pushing to GitHub
-# Tests run in Jenkins (not locally)
+# Uses absolute paths since git hooks run in a restricted environment
 
 set -e
 
-echo "🔍 Running pre-push checks..."
-echo ""
+# Use absolute paths since git hooks have limited environment
+MIX_BIN="/Users/abby/.local/share/mise/shims/mix"
 
-# Check if we're pushing to main
-read local_ref local_oid remote_ref remote_oid
-if [[ $remote_ref == "refs/heads/main" ]]; then
-  echo "⚠️  Pushing to main branch - validating and building release..."
-  echo ""
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-  # Ensure dependencies are up to date
-  echo "📦 Installing dependencies..."
-  mix deps.get || {
-    echo "❌ Failed to install dependencies"
-    exit 1
-  }
-
-  # Check for compilation issues (quick validation)
-  echo ""
-  echo "🔨 Compiling code..."
-  mix compile --force || {
-    echo "❌ Compilation failed - push aborted"
-    exit 1
-  }
-
-  # Quick linting check (non-blocking)
-  echo ""
-  echo "📝 Running linter..."
-  mix credo --strict || {
-    echo "⚠️  Linting issues found (non-blocking, will fail in CI)"
-  }
-
-  # Run tests (required before release)
-  echo ""
-  echo "🧪 Running tests..."
-  mix test || {
-    echo "❌ Tests failed - push aborted"
-    exit 1
-  }
-
-  # Build OTP release
-  echo ""
-  echo "📦 Building OTP release..."
-  MIX_ENV=prod mix release --overwrite || {
-    echo "❌ Release build failed - push aborted"
-    exit 1
-  }
-
-  # Extract version and create GitHub release
-  echo ""
-  echo "🚀 Publishing release to GitHub..."
-  VERSION=$(cat _build/prod/rel/cc_http_llm_gateway/releases/start_erl.data | awk '{print $2}')
-  echo "Version: $VERSION"
-
-  # Create tarball
-  tar -czf cc_http_llm_gateway-$VERSION.tar.gz -C _build/prod/rel cc_http_llm_gateway/ || {
-    echo "❌ Failed to create tarball"
-    exit 1
-  }
-  echo "✓ Tarball created: cc_http_llm_gateway-$VERSION.tar.gz"
-
-  # Create GitHub release
-  gh release create v$VERSION cc_http_llm_gateway-$VERSION.tar.gz \
-    --title "Release v$VERSION" \
-    --notes "CC HTTP LLM Gateway Elixir release v$VERSION. Automatically deployed by Jenkins." \
-    --draft=false || {
-    echo "⚠️  Release already exists or GitHub publish failed"
-    echo "Continuing with push anyway..."
-  }
-  echo "✓ Release published to GitHub"
-
-  echo ""
-  echo "✅ All checks passed, release built and published!"
-  echo "📤 Proceeding with push..."
-else
-  echo "ℹ️  Pushing to feature branch - skipping validation"
+# Only enforce checks on main branch
+if [ "$BRANCH" != "main" ]; then
+  exit 0
 fi
 
+echo "==============================================="
+echo "Pre-push hook: bot_army_cc_http_llm_gateway"
+echo "==============================================="
+
+# Step 1: Compile with strict warnings
 echo ""
+echo "1️⃣  Compiling with warnings as errors..."
+$MIX_BIN compile --warnings-as-errors || {
+  echo "❌ Compilation failed"
+  exit 1
+}
+echo "✓ Compilation successful"
+
+# Step 2: Run tests
+echo ""
+echo "2️⃣  Running tests..."
+$MIX_BIN test || {
+  echo "❌ Tests failed"
+  exit 1
+}
+echo "✓ All tests passed"
+
+# Step 3: Build release
+echo ""
+echo "3️⃣  Building release..."
+MIX_ENV=prod $MIX_BIN release --overwrite || {
+  echo "❌ Release build failed"
+  exit 1
+}
+echo "✓ Release built successfully"
+
+# Step 4: Create tarball
+echo ""
+echo "4️⃣  Creating release tarball..."
+RELEASE_VSN=$(cat _build/prod/rel/cc_http_llm_gateway/releases/start_erl.data | awk '{print $2}')
+echo "Release version: $RELEASE_VSN"
+
+TARBALL="cc_http_llm_gateway-${RELEASE_VSN}.tar.gz"
+tar -czf "$TARBALL" -C _build/prod/rel cc_http_llm_gateway/ || {
+  echo "❌ Tarball creation failed"
+  exit 1
+}
+echo "✓ Created: $TARBALL"
+
+# Step 5: Publish to GitHub releases
+echo ""
+echo "5️⃣  Publishing to GitHub releases..."
+gh release create "v${RELEASE_VSN}" \
+  "$TARBALL" \
+  --repo "ergon-automation-labs/ergon-cc_http_llm_gateway" \
+  --title "CC HTTP LLM Gateway v${RELEASE_VSN}" \
+  --notes "Release v${RELEASE_VSN}" \
+  2>/dev/null || {
+  # If release already exists, that's fine
+  echo "⚠️  Release may already exist (continuing anyway)"
+}
+echo "✓ Release published to GitHub"
+
+# Step 6: Clean up tarball
+rm -f "$TARBALL"
+
+echo ""
+echo "==============================================="
+echo "✓ All checks passed — proceeding with push"
+echo "==============================================="
+echo ""
+
 exit 0
 
