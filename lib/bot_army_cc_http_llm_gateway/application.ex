@@ -27,6 +27,9 @@ defmodule BotArmyCcHttpLlmGateway.Application do
   end
 
   defp http_port do
-    Application.get_env(:bot_army_cc_http_llm_gateway, :http_port, 9090)
+    case System.get_env("PORT") do
+      nil -> Application.get_env(:bot_army_cc_http_llm_gateway, :http_port, 9090)
+      port_str -> String.to_integer(port_str)
+    end
   end
 end

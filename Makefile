@@ -17,9 +17,9 @@ help:
 	@echo "  make clean           - Clean build artifacts"
 	@echo ""
 	@echo "Gateway commands:"
-	@echo "  make run-local       - Build and run gateway locally on port 9090"
+	@echo "  make run-local       - Build and run gateway locally on port 39090"
 	@echo "  make test-gateway    - Send test request to running gateway (requires make run-local)"
-	@echo "  make start           - Start the HTTP gateway (PORT=9090 by default)"
+	@echo "  make start           - Start the HTTP gateway (PORT=39090 by default)"
 	@echo "  make logs            - Tail today's log with grc colorization"
 	@echo ""
 	@echo "Release commands (normally automatic via git hook):"
@@ -113,15 +113,15 @@ publish-release: release
 	echo "3. Check deployment status: make jenkins-logs"; \
 	echo ""
 
-start:  ## Start the gateway HTTP server (uses PORT env var, default 9090)
-	@PORT=$${PORT:-9090} ./_build/prod/rel/cc_http_llm_gateway/bin/cc_http_llm_gateway start
+start:  ## Start the gateway HTTP server (uses PORT env var, default 39090)
+	@PORT=$${PORT:-39090} ./_build/prod/rel/cc_http_llm_gateway/bin/cc_http_llm_gateway start
 
 logs:  ## Tail today's log with grc colorization
 	@grc --config=cc_http_llm_gateway tail -f /var/log/bot_army/cc_http_llm_gateway/$$(date +%Y-%m-%d).log
 
 # Local testing targets
 
-run-local:  ## Build release and start gateway locally on port 9090
+run-local:  ## Build release and start gateway locally on port 39090
 	@echo "==============================================="
 	@echo "Building release..."
 	@echo "==============================================="
@@ -129,22 +129,22 @@ run-local:  ## Build release and start gateway locally on port 9090
 	@echo ""
 	@echo "✓ Release built"
 	@echo ""
-	@echo "Starting gateway on http://localhost:9090"
+	@echo "Starting gateway on http://localhost:39090"
 	@echo "Press Ctrl+C to stop"
 	@echo ""
-	@PORT=9090 ./_build/prod/rel/cc_http_llm_gateway/bin/cc_http_llm_gateway foreground
+	@PORT=39090 ./_build/prod/rel/cc_http_llm_gateway/bin/cc_http_llm_gateway foreground
 
-test-gateway:  ## Test gateway with curl (requires gateway running on port 9090)
+test-gateway:  ## Test gateway with curl (requires gateway running on port 39090)
 	@echo "Testing Claude Code HTTP LLM Gateway..."
 	@echo ""
-	@echo "Sending test request to http://localhost:9090/v1/messages"
+	@echo "Sending test request to http://localhost:39090/v1/messages"
 	@echo ""
-	@curl -s -X POST http://localhost:9090/v1/messages \
+	@curl -s -X POST http://localhost:39090/v1/messages \
 		-H "Content-Type: application/json" \
 		-H "x-api-key: test-key-ignored" \
 		-H "anthropic-version: 2023-06-01" \
 		-d '{"model":"claude-haiku-4-5-20251001","messages":[{"role":"user","content":"Hello, what is 1+1?"}],"max_tokens":100}' | \
-		jq . 2>/dev/null || curl -X POST http://localhost:9090/v1/messages \
+		jq . 2>/dev/null || curl -X POST http://localhost:39090/v1/messages \
 		-H "Content-Type: application/json" \
 		-H "x-api-key: test-key-ignored" \
 		-H "anthropic-version: 2023-06-01" \
