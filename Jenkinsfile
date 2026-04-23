@@ -22,7 +22,10 @@ pipeline {
 
     stage('Checkout') {
       steps {
-        checkout scm
+        sh '''
+          /opt/bot_army/scripts/jenkins_checkout.sh ${GITHUB_REPO} ${WORKSPACE}
+          echo "Current commit: $(git rev-parse HEAD)"
+        '''
       }
     }
 
@@ -131,6 +134,62 @@ pipeline {
           done
 
           echo "Deploy complete!"
+          echo "Completion time: $(date)"
+        '''
+      }
+    }
+
+    stage('Publish Deploy Event') {
+      steps {
+        sh '''
+          echo "==============================================="
+          echo "Publishing deploy event"
+          echo "==============================================="
+          echo "Start time: $(date)"
+
+          # Get the release binary path
+          RELEASE_BIN="${RELEASE_DIR}/current/llm_gateway/bin/llm_gateway"
+
+          if [ ! -f "$RELEASE_BIN" ]; then
+            echo "⚠️  Release binary not found at $RELEASE_BIN"
+            echo "Publishing deploy_failed event"
+            PAYLOAD=$(cat <<EOF
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"failed"}
+EOF
+)
+            /opt/bot_army/scripts/nats_publish.sh ops.deploy.llm_gateway "$PAYLOAD" || echo "⚠️  NATS publish failed (non-blocking)"
+            exit 1
+          fi
+
+          echo "Publishing deploy_started event..."
+          PAYLOAD=$(cat <<EOF
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"started"}
+EOF
+)
+          /opt/bot_army/scripts/nats_publish.sh ops.deploy.llm_gateway "$PAYLOAD" || echo "⚠️  NATS publish failed (non-blocking)"
+
+          echo "Running migrations..."
+          $RELEASE_BIN eval 'LlmGateway.Release.migrate()' && {
+            echo "✓ Migrations complete"
+            echo "Publishing deploy_complete event..."
+            VERSION=$(awk '{print $2}' "$RELEASE_DIR/current/llm_gateway/releases/start_erl.data" 2>/dev/null || echo "unknown")
+            PAYLOAD=$(cat <<EOF
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"complete","version":"${VERSION}"}
+EOF
+)
+            /opt/bot_army/scripts/nats_publish.sh ops.deploy.llm_gateway "$PAYLOAD" || echo "⚠️  NATS publish failed (non-blocking)"
+          } || {
+            echo "⚠️  Migration failed"
+            echo "Publishing deploy_failed event..."
+            PAYLOAD=$(cat <<EOF
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"failed"}
+EOF
+)
+            /opt/bot_army/scripts/nats_publish.sh ops.deploy.llm_gateway "$PAYLOAD" || echo "⚠️  NATS publish failed (non-blocking)"
+            exit 1
+          }
+
+          echo "Publish Deploy Event complete!"
           echo "Completion time: $(date)"
         '''
       }
