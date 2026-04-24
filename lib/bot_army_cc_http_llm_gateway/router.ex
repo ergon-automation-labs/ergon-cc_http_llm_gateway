@@ -52,7 +52,9 @@ defmodule BotArmyCcHttpLlmGateway.Router do
         response_json = encode_response_body(response_body)
         RequestLogger.log_response(body, response_json, latency_ms)
         conn
-        |> put_resp_header("content-type", "application/json")
+        |> put_resp_header("content-type", "application/json; charset=utf-8")
+        |> put_resp_header("cache-control", "no-cache, no-store, must-revalidate")
+        |> put_resp_header("pragma", "no-cache")
         |> send_resp(200, response_json)
 
       {:error, :timeout} ->

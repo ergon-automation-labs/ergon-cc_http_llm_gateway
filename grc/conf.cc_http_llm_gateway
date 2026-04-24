@@ -1,6 +1,6 @@
 # grc (Generic Colorizer) configuration for CC HTTP LLM Gateway logs
 # Install to ~/.grc/conf.cc_http_llm_gateway via: make setup-hooks
-# Use with: grc --config=cc_http_llm_gateway tail -f /var/log/bot_army/cc_http_llm_gateway/YYYY-MM-DD.log
+# Use with: grc --config=conf.cc_http_llm_gateway tail -f /var/log/bot_army/cc_http_llm_gateway/YYYY-MM-DD.log
 
 # Timestamps (dim)
 regexp=\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\]

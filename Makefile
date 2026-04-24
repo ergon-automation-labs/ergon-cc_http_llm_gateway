@@ -1,3 +1,5 @@
+SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
+
 .PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks start logs
 
 help:
@@ -41,7 +43,7 @@ setup: init deps setup-hooks
 setup-hooks:
 	@git config core.hooksPath git-hooks
 	@mkdir -p ~/.grc
-	@cp grc/conf.cc_http_llm_gateway ~/.grc/
+	@cp grc/conf.cc_http_llm_gateway ~/.grc/conf.cc_http_llm_gateway
 	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
 	@echo "✓ grc config installed to ~/.grc/conf.cc_http_llm_gateway"
 
@@ -116,8 +118,8 @@ publish-release: release
 start:  ## Start the gateway HTTP server (uses PORT env var, default 9090)
 	@PORT=$${PORT:-9090} ./_build/prod/rel/cc_http_llm_gateway/bin/cc_http_llm_gateway start
 
-logs:  ## Tail today's log with grc colorization
-	@grc --config=cc_http_llm_gateway tail -f /var/log/bot_army/cc_http_llm_gateway/$$(date +%Y-%m-%d).log
+logs:  ## Tail today's log with grc colorization (via $(SCRIPTS_DIRECTORY))
+	@$(SCRIPTS_DIRECTORY)/tail_bot_log.sh
 
 # Local testing targets
 
