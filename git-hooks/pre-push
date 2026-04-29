@@ -73,8 +73,14 @@ gh release create "v${RELEASE_VSN}" \
 }
 echo "✓ Release published to GitHub"
 
-# Step 6: Clean up tarball
-rm -f "$TARBALL"
+# Cleanup build artifacts created by this hook
+
+# Step 6: Clean up local release artifacts
+echo ""
+echo "🧹 Cleaning up local release artifacts..."
+rm -f ./*.tar.gz
+rm -rf ./_build
+echo "✓ Cleanup complete"
 
 echo ""
 echo "==============================================="
