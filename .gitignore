@@ -1,5 +1,7 @@
 # Elixir/Mix
 _build/
+/deps/
+/.cache/
 deps/
 *.beam
 *.ez
