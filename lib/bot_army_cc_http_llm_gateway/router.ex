@@ -12,9 +12,9 @@ defmodule BotArmyCcHttpLlmGateway.Router do
 
   alias BotArmyCcHttpLlmGateway.RequestLogger
 
-  plug :match
-  plug Plug.Parsers, parsers: [:json], json_decoder: Jason
-  plug :dispatch
+  plug(:match)
+  plug(Plug.Parsers, parsers: [:json], json_decoder: Jason)
+  plug(:dispatch)
 
   post "/v1/messages" do
     handle_claude_code_request(conn)
@@ -28,7 +28,8 @@ defmodule BotArmyCcHttpLlmGateway.Router do
 
   defp handle_claude_code_request(conn) do
     start_time = System.monotonic_time(:millisecond)
-    body = conn.body_params  # already parsed JSON via Plug.Parsers
+    # already parsed JSON via Plug.Parsers
+    body = conn.body_params
 
     Logger.debug("Claude Code request received", model: body["model"])
 
@@ -41,16 +42,21 @@ defmodule BotArmyCcHttpLlmGateway.Router do
       "source_node" => node() |> Atom.to_string(),
       "triggered_by" => "claude_code",
       "schema_version" => "1.0",
-      "payload" => body  # full Anthropic Messages API body, passed through
+      # full Anthropic Messages API body, passed through
+      "payload" => body
     }
 
-    timeout_ms = 120_000  # 2 minutes for slow LLM calls
+    # 2 minutes for slow LLM calls
+    timeout_ms = 120_000
 
-    case BotArmyRuntime.NATS.Publisher.request("llm.claude_code.complete", envelope, timeout_ms) do
+    case BotArmyRuntime.NATS.Publisher.request("llm.claude_code.complete", envelope,
+           timeout_ms: timeout_ms
+         ) do
       {:ok, response_body} ->
         latency_ms = System.monotonic_time(:millisecond) - start_time
         response_json = encode_response_body(response_body)
         RequestLogger.log_response(body, response_json, latency_ms)
+
         conn
         |> put_resp_header("content-type", "application/json; charset=utf-8")
         |> put_resp_header("cache-control", "no-cache, no-store, must-revalidate")
@@ -60,12 +66,15 @@ defmodule BotArmyCcHttpLlmGateway.Router do
       {:error, :timeout} ->
         latency_ms = System.monotonic_time(:millisecond) - start_time
         RequestLogger.log_error(body, :timeout, latency_ms)
-        error_response = Jason.encode!(%{
-          "error" => %{
-            "type" => "timeout",
-            "message" => "LLM request timed out after #{timeout_ms}ms"
-          }
-        })
+
+        error_response =
+          Jason.encode!(%{
+            "error" => %{
+              "type" => "timeout",
+              "message" => "LLM request timed out after #{timeout_ms}ms"
+            }
+          })
+
         conn
         |> put_resp_header("content-type", "application/json")
         |> send_resp(408, error_response)
@@ -73,12 +82,15 @@ defmodule BotArmyCcHttpLlmGateway.Router do
       {:error, reason} ->
         latency_ms = System.monotonic_time(:millisecond) - start_time
         RequestLogger.log_error(body, reason, latency_ms)
-        error_response = Jason.encode!(%{
-          "error" => %{
-            "type" => "upstream_error",
-            "message" => "LLM proxy error: #{inspect(reason)}"
-          }
-        })
+
+        error_response =
+          Jason.encode!(%{
+            "error" => %{
+              "type" => "upstream_error",
+              "message" => "LLM proxy error: #{inspect(reason)}"
+            }
+          })
+
         conn
         |> put_resp_header("content-type", "application/json")
         |> send_resp(502, error_response)
@@ -86,12 +98,15 @@ defmodule BotArmyCcHttpLlmGateway.Router do
   rescue
     e ->
       Logger.error("Request processing failed: #{inspect(e)}")
-      error_response = Jason.encode!(%{
-        "error" => %{
-          "type" => "internal_error",
-          "message" => "Request processing error"
-        }
-      })
+
+      error_response =
+        Jason.encode!(%{
+          "error" => %{
+            "type" => "internal_error",
+            "message" => "Request processing error"
+          }
+        })
+
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(500, error_response)

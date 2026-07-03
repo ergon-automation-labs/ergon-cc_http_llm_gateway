@@ -8,8 +8,8 @@ config :bot_army_cc_http_llm_gateway,
 # Log directory configuration
 config :bot_army_cc_http_llm_gateway, :log_dir, System.get_env("LOG_DIR", "./logs")
 
-# NATS configuration (inherited from bot_army_runtime)
-config :bot_army_runtime, :nats,
+# NATS configuration (inherited from bot_army_library_runtime)
+config :bot_army_library_runtime, :nats,
   servers: [
     {System.get_env("NATS_HOST", "localhost"),
      String.to_integer(System.get_env("NATS_PORT", "4222"))}
