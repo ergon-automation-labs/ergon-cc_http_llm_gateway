@@ -32,3 +32,4 @@ cover/
 
 # generated assets
 *.tar.gz
+.release-published

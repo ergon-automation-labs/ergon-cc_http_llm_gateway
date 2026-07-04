@@ -7,6 +7,7 @@ set -e
 
 # Use absolute paths since git hooks have limited environment
 MIX_BIN="/Users/abby/.local/share/mise/shims/mix"
+GH_BIN="/opt/homebrew/bin/gh"
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
@@ -62,16 +63,19 @@ echo "✓ Created: $TARBALL"
 # Step 5: Publish to GitHub releases
 echo ""
 echo "5️⃣  Publishing to GitHub releases..."
-gh release create "v${RELEASE_VSN}" \
-  "$TARBALL" \
-  --repo "ergon-automation-labs/ergon-cc_http_llm_gateway" \
-  --title "CC HTTP LLM Gateway v${RELEASE_VSN}" \
-  --notes "Release v${RELEASE_VSN}" \
-  2>/dev/null || {
-  # If release already exists, that's fine
-  echo "⚠️  Release may already exist (continuing anyway)"
-}
-echo "✓ Release published to GitHub"
+if $GH_BIN release view "v${RELEASE_VSN}" --repo "ergon-automation-labs/ergon-cc_http_llm_gateway" >/dev/null 2>&1; then
+  echo "⚠️  Release v${RELEASE_VSN} already exists — skipping publish"
+else
+  $GH_BIN release create "v${RELEASE_VSN}" \
+    "$TARBALL" \
+    --repo "ergon-automation-labs/ergon-cc_http_llm_gateway" \
+    --title "CC HTTP LLM Gateway v${RELEASE_VSN}" \
+    --notes "Release v${RELEASE_VSN}" || {
+    echo "❌ Release publish failed"
+    exit 1
+  }
+  echo "✓ Release published to GitHub"
+fi
 
 # Cleanup build artifacts created by this hook
 
